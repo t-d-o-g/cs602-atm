@@ -1,25 +1,30 @@
 import java.io.IOException;
 import java.io.PrintWriter;
 import jakarta.servlet.*;
-import jakarta.servlet.annotation.*;
-import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.sql.*;
 
 
 @WebServlet("/Main")
-public class Main extends HttpServlet implements Servlet {
+public class Main extends HttpServlet {
 	static final long serialVersionUID = 1L;
 
 	public Main() {
 		super();
 	}
 
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 		throws ServletException, IOException {
 			response.setContentType("text/html");
+			response.setHeader("WWW-Authenticate", "BASICATM realm=\"atm\"");
 			String userID = request.getParameter("userID");
+			String pin = request.getParameter("pin");
 			PrintWriter out = response.getWriter();
-			String msg = "";
+			String errMsg = "Your authentication has failed, please try again";
+			String succMsg = "Your authentication is successful";
 
 			try {
 				Class.forName("com.mysql.cj.jdbc.Driver");
@@ -30,32 +35,25 @@ public class Main extends HttpServlet implements Servlet {
 				try {
 					stmt.execute("drop table if exists accountInfo");
 					stmt.execute(
-						"create table if not exists accountInfo(userID integer, Name char(30), Balance decimal(15, 2))");
+						"create table if not exists accountInfo(userID integer, Name char(30), Pin char(4), Balance decimal(15, 2))");
 				} catch (Exception e) {
 					System.out.println(e);
 				}
-				stmt.execute("Insert into accountInfo (userID, Name, Balance) values(1, \"alice\", 99.99)");
-				stmt.execute("Insert into accountInfo (userID, Name, Balance) values(2, \"bob\", 100.00)");
-				stmt.execute("Insert into accountInfo (userID, Name, Balance) values(3, \"frank\", 100.01)");
+				stmt.execute("Insert into accountInfo (userID, Name, Pin, Balance) values(1, \"alice\", \"1234\", 99.99)");
+				stmt.execute("Insert into accountInfo (userID, Name, Pin, Balance) values(2, \"bob\", \"2345\", 100.00)");
+				stmt.execute("Insert into accountInfo (userID, Name, Pin, Balance) values(3, \"frank\", \"3456\", 100.01)");
 
 				ResultSet accountInfo = null; 
-				if (!userID.isEmpty()) {
+				if (!userID.isEmpty())
 					accountInfo = stmt.executeQuery("Select * from accountInfo where userID = " + userID);
-				} else {
-					response.sendRedirect("http://localhost:8080/cs602-atm-0.0.1/Client.jsp");
-				}
+				else
+					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
 
-				if (accountInfo.next() == false) {
-					msg = "Your authentication has failed, please try again";
-				} else {
-					System.out.println("User ID entered: " + userID);
-					System.out.println("User ID in DB: " + accountInfo.getString(1));
-					if (accountInfo.getString(1).equals(userID)) {
-						msg = "Your authentication is successful";
-					} else {
-						msg = "Your authentication has failed, please try again";
-					}
-				}
+				if (accountInfo.next() == false)
+					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
+				else
+					if (!accountInfo.getString(3).equals(pin))
+					  response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
 			} catch (Exception e) {
 				System.out.println(e);
 			}
@@ -63,7 +61,7 @@ public class Main extends HttpServlet implements Servlet {
 			out.println("<head><title>ATM</title></head>");
 			out.println("<body bgcolor=\"abc123\">");
 			out.println("<center>");
-			out.println("<h2>" + msg + "</h2>");
+			out.println("<h2>" + succMsg + "</h2>");
 			out.println("</center>");
 			out.println("</body>");
 			out.println("</html>");
