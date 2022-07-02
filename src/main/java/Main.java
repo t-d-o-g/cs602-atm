@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.sql.*;
+import java.math.BigDecimal;
 
 
 @WebServlet("/Main")
@@ -14,6 +15,63 @@ public class Main extends HttpServlet {
 
 	public Main() {
 		super();
+	}
+
+	
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+		throws ServletException, IOException {
+			response.setContentType("text/html");
+			PrintWriter out = response.getWriter();
+			String transMsg = "";
+			String withdrawEnabled = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
+			String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\">";
+			String depositEnabled = "<input type=\"radio\" name=\"rd\" value=\"deposit\" checked=\"checked\">";
+			String depositRd = "<input type=\"radio\" name=\"rd\" value=\"deposit\">";
+			BigDecimal amount = new BigDecimal("0.00");
+			BigDecimal balance = new BigDecimal("0.00");
+
+
+			String transaction = request.getParameter("rd");
+			System.out.println("Transaction: " + transaction);
+			
+			if (transaction.equals("withdraw")) {
+				withdrawRd = withdrawEnabled;
+				try {
+					amount = new BigDecimal(request.getParameter("withdraw"));
+				} catch (Exception e) {
+					transMsg = "Please enter a withdraw amount";
+				}
+				balance = withdraw(amount);
+
+			} else {
+				depositRd = depositEnabled;
+				try {
+					amount = new BigDecimal(request.getParameter("deposit"));
+				} catch (Exception e) {
+					transMsg = "Please enter a deposit amount";
+				}
+				balance = deposit(amount);
+			}
+
+			String msg = transMsg.isEmpty() ? "Balance: $" + balance.toString() : transMsg;
+			out.println("<html>");
+			out.println("<head><title>ATM</title></head>");
+			out.println("<body bgcolor=\"fef666\">");
+			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Client.jsp\" method=\"GET\">");
+			out.println("<input type=\"submit\" value=\"Logout\">");
+			out.println("</form>");
+			out.println("<center>");
+			out.println("<h2>" + msg + "</h2>");
+			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"GET\">");
+			out.println(withdrawRd);
+			out.println("Withdraw: <input type=\"text\" name=\"withdraw\"><br>");
+			out.println(depositRd);
+			out.println("Deposit: <input type=\"text\" name=\"deposit\"><br>");
+			out.println("<input type=\"submit\" value=\"Submit\">");
+			out.println("</form>");
+			out.println("</center>");
+			out.println("</body>");
+			out.println("</html>");
 	}
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -59,11 +117,49 @@ public class Main extends HttpServlet {
 			}
 			out.println("<html>");
 			out.println("<head><title>ATM</title></head>");
-			out.println("<body bgcolor=\"abc123\">");
+			out.println("<body bgcolor=\"fef666\">");
+			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Client.jsp\" method=\"GET\">");
+			out.println("<input type=\"submit\" value=\"Logout\">");
+			out.println("</form>");
 			out.println("<center>");
-			out.println("<h2>" + succMsg + "</h2>");
+			out.println("<h2 style=\"color:green\">" + succMsg + "</h2>");
+			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"GET\">");
+			out.println("<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">");
+			out.println("Withdraw: <input type=\"text\" name=\"withdraw\"><br>");
+			out.println("<input type=\"radio\" name=\"rd\" value=\"deposit\">");
+			out.println("Deposit: <input type=\"text\" name=\"deposit\"><br>");
+			out.println("<input type=\"submit\" value=\"Submit\">");
+			out.println("</form>");
 			out.println("</center>");
 			out.println("</body>");
 			out.println("</html>");
 		} 
+	
+		private BigDecimal withdraw(BigDecimal amount) {
+			try {
+				Class.forName("com.mysql.cj.jdbc.Driver");
+				Connection conn = DriverManager.getConnection(
+					"jdbc:mysql://localhost:3306/ATM?user=root&password=root"
+				);
+				Statement stmt = conn.createStatement();
+			} catch (Exception e) {
+				System.out.println(e);
+			}
+			
+			return amount;
+		}
+		
+		private BigDecimal deposit(BigDecimal amount) {
+			try {
+				Class.forName("com.mysql.cj.jdbc.Driver");
+				Connection conn = DriverManager.getConnection(
+					"jdbc:mysql://localhost:3306/ATM?user=root&password=root"
+				);
+				Statement stmt = conn.createStatement();
+			} catch (Exception e) {
+				System.out.println(e);
+			}
+
+			return amount;
+		}
 }

@@ -3,7 +3,7 @@
 	<head>
 		<title>NJIT Credit Union</title>
 	</head>
-	<body bgcolor="#abc123">
+	<body bgcolor="#fef666">
 		<center>	
 			<h1>NJIT Credit Union</h1>
 			<h3>Please enter your User ID:</h3>
@@ -12,8 +12,8 @@
 				out.println("UserID: <input type=\"text\" name=\"userID\"><br>");
 				out.println("Pin: <input type=\"text\" name=\"pin\"><br>");
 				out.println("<input type=\"submit\" value=\"Submit\">");
+				out.println("</form>");
 			%>
-			</form>
 		</center>
 	</body>
 </html>
