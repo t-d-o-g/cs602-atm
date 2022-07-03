@@ -33,7 +33,7 @@ public class Main extends HttpServlet {
 		throws ServletException, IOException {
 			response.setContentType("text/html");
 			String paramVal = "";
-			String transMsg = "";
+			String errMsg = "";
 			String withdrawEnabled = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
 			String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\">";
 			String depositEnabled = "<input type=\"radio\" name=\"rd\" value=\"deposit\" checked=\"checked\">";
@@ -49,15 +49,15 @@ public class Main extends HttpServlet {
 				try {
 					amount = new BigDecimal(paramVal);
 				} catch (Exception e) {
-					transMsg = "Please enter a monetary value greater than 0";
+					errMsg = "Please enter a monetary value greater than 0";
 				}
 				if (amount.compareTo(minAmount) <= 0) {
-					transMsg = "Please enter a monetary value greater than 0";
+					errMsg = "Please enter a monetary value greater than 0";
 				} else {
 					try {
 						withdraw(balance, amount);
 					} catch (InsufficientFundsException e) {
-						transMsg = "There is insufficient funds, please try a smaller amount";
+						errMsg = "There is insufficient funds, please try a smaller amount";
 					}
 				}
 			} else {
@@ -66,16 +66,18 @@ public class Main extends HttpServlet {
 				try {
 					amount = new BigDecimal(paramVal);
 				} catch (Exception e) {
-					transMsg = "Please enter a monetary value";
+					errMsg = "Please enter a monetary value";
 				}
 				if (amount.compareTo(minAmount) <= 0) {
-					transMsg = "Please enter a monetary value greater than 0";
+					errMsg = "Please enter a monetary value greater than 0";
 				} else {
 					deposit(balance, amount);
 				}
 			}
 
-			String msg = "<h2 style=\"color:red\">" + transMsg + "</h2>";
+			String msg = errMsg.isEmpty() 
+				? "<h3> Your account balance is $" + balanceStr + "</h3>"
+				: "<h3 class=\"err-msg\">" + errMsg + "</h3>";
 			display(response, msg, withdrawRd, depositRd);
 	}
 
@@ -115,7 +117,7 @@ public class Main extends HttpServlet {
 				System.out.println(e);
 			}
 			
-			String msg = "<h2 style=\"color:green\">" + succMsg + "</h2>";
+			String msg = "<h3 class=\"succ-msg\">" + succMsg + "</h3>";
 			display(response, msg, withdrawRd, depositRd);
 	} 
 
@@ -123,23 +125,43 @@ public class Main extends HttpServlet {
 		throws IOException {
 			PrintWriter out = response.getWriter();
 			out.println("<html>");
-			out.println("<head><title>ATM</title></head>");
-			out.println("<body bgcolor=\"fef666\">");
-			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Client.jsp\" method=\"GET\">");
-			out.println("<input type=\"submit\" value=\"Logout\">");
-			out.println("</form>");
+			out.println("<head>");
+			out.println("<title>NJIT Credit Union</title>");
+			out.println("<style>");
+			out.println("html, body {background-color:#ffffcc; text-align:center;}"); 
+			out.println("#form {display:inline-block; margin:0 auto; font-family:Arial; font-size:18px; text-align:left}");
+			out.println("#fields {display:inline-block; width:50%; margin:100px auto; padding:0 65px}");
+			out.println(".header {background-color:#071D49; border:3px solid #C1C6C8; color:white; width:50%; margin:20px auto; padding: 10px;}"); 
+			out.println(".err-msg {color:#D22630}"); 
+			out.println(".succ-msg {color:green;}"); 
+			out.println(".submit-btn {width:80; height:25; font-size:15; margin:50px 35%}"); 
+			out.println(".logout-btn {width:80px; height:25px; font-size:15px; margin:0 auto}"); 
+			out.println("input {margin:10px; font-size:18px; outline:none; background-color:#eee; border:3px solid #ccc}"); 
+			out.println("input[type=text]:focus {border:3px solid #071D49}"); 
+			out.println("input[type=radio] {accent-color:#071D49}"); 
+			out.println("</style>");
+			out.println("<head>");
 
-			out.println("<center>");
-			out.println("<h2 style=\"color:green\">Hello " + name + "! Your account balance is $" + balanceStr + "</h2>");
+			out.println("<body>");
+
+			out.println("<div class=\"header\">");
+			out.println("<h1>Hello " + name + "!</h1>");
+			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Client.jsp\" method=\"POST\">");
+			out.println("<button class=\"logout-btn\" type=\"submit\">Logout</button>");
+			out.println("</form>");
+			out.println("</div>");
 			out.println(msg);
+			out.println("<div id=\"form\">");
 			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"GET\">");
+			out.println("<div id=\"fields\">");
 			out.println(withdrawRd);
 			out.println("Withdraw: <input type=\"text\" name=\"withdraw\"><br>");
 			out.println(depositRd);
 			out.println("Deposit: <input type=\"text\" name=\"deposit\"><br>");
-			out.println("<input type=\"submit\" value=\"Submit\">");
+			out.println("<button class=\"submit-btn\" type=\"submit\">Submit</button>");
+			out.println("</div>");
 			out.println("</form>");
-			out.println("</center>");
+			out.println("</div>");
 			out.println("</body>");
 			out.println("</html>");
 	}

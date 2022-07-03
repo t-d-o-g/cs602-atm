@@ -17,20 +17,21 @@
 			#fields {
 				display: inline-block;
 				width: 50%;
-				margin: 150px auto;
+				margin: 100px auto;
 				padding: 0 65px;
 			}
 			.header {
-				background-color: yellow;
-				border: 3px solid green;
+				background-color: #071D49;
+				border: 3px solid #C1C6C8;
+				color: white;
 				width: 50%;
 				margin: 20px auto;
 				padding: 25px;
 			}
 			.submit-btn {
-				width: 100px;
-				height: 30px;
-				font-size: 20px;
+				width: 80px;
+				height: 25px;
+				font-size: 15px;
 				margin: 50px 35%;
 			}
 			input {
@@ -41,16 +42,16 @@
 				border: 3px solid #ccc;
 			}
 			input[type=text]:focus {
-				border: 3px solid #555;
+				border: 3px solid #071D49;
 			}
 		</style>
 	</head>
 	<body>
 		<div class="header">
 			<h1>NJIT Credit Union</h1>
-			<h3>Please enter your User ID:</h3>
 		</div>
 		<%
+			out.println("<h3>Please enter your User ID</h3>");
 			out.println("<div id=\"form\">");
 			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"POST\">");
 			out.println("<div id=\"fields\">");

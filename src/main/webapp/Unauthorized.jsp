@@ -21,8 +21,9 @@
 				padding: 0 65px;
 			}
 			.header {
-				background-color: yellow;
-				border: 3px solid green;
+				background-color: #071D49;
+				border: 3px solid #C1C6C8;
+				color: white;
 				width: 50%;
 				margin: 20px auto;
 				padding: 25px;
@@ -33,6 +34,9 @@
 				font-size: 20px;
 				margin: 50px 35%;
 			}
+			.err-msg {
+				color: #D22630;
+			}
 			input {
 				margin: 10px;
 				font-size: 18px;
@@ -41,17 +45,16 @@
 				border: 3px solid #ccc;
 			}
 			input[type=text]:focus {
-				border: 3px solid #555;
+				border: 3px solid #071D49;
 			}
 		</style>
 	</head>
 	<body>
 		<div class="header">
 			<h1>NJIT Credit Union</h1>
-			<h3>Please enter your User ID:</h3>
 		</div>
 		<%
-			out.println("<h2 style=\"color:red\">Your authentication has failed, please try again</h2>");
+			out.println("<h3 class=\"err-msg\">Your authentication has failed, please try again</h3>");
 			out.println("<div id=\"form\">");
 			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"POST\">");
 			out.println("<div id=\"fields\">");
