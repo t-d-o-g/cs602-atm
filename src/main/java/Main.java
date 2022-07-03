@@ -7,21 +7,29 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.sql.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
+
+class InsufficientFundsException extends Exception {
+    InsufficientFundsException(String message) {
+        super(message);
+    }
+}
 
 @WebServlet("/Main")
 public class Main extends HttpServlet {
 	static final long serialVersionUID = 1L;
+	private static final BigDecimal minAmount = new BigDecimal("0.00");
 
 	public Main() {
 		super();
 	}
 
-	
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 		throws ServletException, IOException {
 			response.setContentType("text/html");
 			PrintWriter out = response.getWriter();
+			String paramVal = "";
 			String transMsg = "";
 			String withdrawEnabled = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
 			String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\">";
@@ -29,31 +37,46 @@ public class Main extends HttpServlet {
 			String depositRd = "<input type=\"radio\" name=\"rd\" value=\"deposit\">";
 			BigDecimal amount = new BigDecimal("0.00");
 			BigDecimal balance = new BigDecimal("0.00");
-
+			Object attUserID = request.getSession().getAttribute("userID");
+			Object attName = request.getSession().getAttribute("name");
+			Object attBalance = request.getSession().getAttribute("bal");
+			balance = new BigDecimal((String) attBalance);
 
 			String transaction = request.getParameter("rd");
-			System.out.println("Transaction: " + transaction);
 			
 			if (transaction.equals("withdraw")) {
 				withdrawRd = withdrawEnabled;
+				paramVal = request.getParameter("withdraw");
 				try {
-					amount = new BigDecimal(request.getParameter("withdraw"));
+					amount = new BigDecimal(paramVal);
 				} catch (Exception e) {
-					transMsg = "Please enter a withdraw amount";
+					transMsg = "Please enter a monetary value";
 				}
-				balance = withdraw(amount);
-
+				if (amount.compareTo(minAmount) <= 0) {
+					transMsg = "Please enter a monetary value greater than 0";
+				} else {
+					try {
+						balance = withdraw(attUserID, balance, amount);
+					} catch (InsufficientFundsException e) {
+						transMsg = "There is insufficient funds, please try a smaller amount";
+					}
+				}
 			} else {
+				paramVal = request.getParameter("deposit");
 				depositRd = depositEnabled;
 				try {
-					amount = new BigDecimal(request.getParameter("deposit"));
+					amount = new BigDecimal(paramVal);
 				} catch (Exception e) {
-					transMsg = "Please enter a deposit amount";
+					transMsg = "Please enter a monetary value";
 				}
-				balance = deposit(amount);
+				if (amount.compareTo(minAmount) <= 0) {
+					transMsg = "Please enter a monetary value greater than 0";
+				} else {
+					balance = deposit(attUserID, balance, amount);
+				}
 			}
+			request.getSession().setAttribute("bal", balance.toString());
 
-			String msg = transMsg.isEmpty() ? "Balance: $" + balance.toString() : transMsg;
 			out.println("<html>");
 			out.println("<head><title>ATM</title></head>");
 			out.println("<body bgcolor=\"fef666\">");
@@ -61,7 +84,8 @@ public class Main extends HttpServlet {
 			out.println("<input type=\"submit\" value=\"Logout\">");
 			out.println("</form>");
 			out.println("<center>");
-			out.println("<h2>" + msg + "</h2>");
+			out.println("<h2 style=\"color:green\">Hello " + attName + "! Your account balance is $" + balance + "</h2>");
+			out.println("<h2 style=\"color:red\">" + transMsg + "</h2>");
 			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"GET\">");
 			out.println(withdrawRd);
 			out.println("Withdraw: <input type=\"text\" name=\"withdraw\"><br>");
@@ -83,6 +107,8 @@ public class Main extends HttpServlet {
 			PrintWriter out = response.getWriter();
 			String errMsg = "Your authentication has failed, please try again";
 			String succMsg = "Your authentication is successful";
+			String name = "";
+			String bal = "";
 
 			try {
 				Class.forName("com.mysql.cj.jdbc.Driver");
@@ -110,8 +136,15 @@ public class Main extends HttpServlet {
 				if (accountInfo.next() == false)
 					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
 				else
-					if (!accountInfo.getString(3).equals(pin))
+					if (!accountInfo.getString(3).equals(pin)) {
 					  response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
+					} else {
+						name = accountInfo.getString(2); 
+						bal = accountInfo.getString(4); 
+						request.getSession().setAttribute("userID", userID);
+						request.getSession().setAttribute("name", name);
+						request.getSession().setAttribute("bal", bal);
+					}
 			} catch (Exception e) {
 				System.out.println(e);
 			}
@@ -122,6 +155,7 @@ public class Main extends HttpServlet {
 			out.println("<input type=\"submit\" value=\"Logout\">");
 			out.println("</form>");
 			out.println("<center>");
+			out.println("<h2 style=\"color:green\">Hello " + name + "! Your account balance is $" + bal + "</h2>");
 			out.println("<h2 style=\"color:green\">" + succMsg + "</h2>");
 			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"GET\">");
 			out.println("<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">");
@@ -135,31 +169,39 @@ public class Main extends HttpServlet {
 			out.println("</html>");
 		} 
 	
-		private BigDecimal withdraw(BigDecimal amount) {
+		private BigDecimal withdraw(Object userID, BigDecimal balance, BigDecimal amount) throws InsufficientFundsException {
+			BigDecimal updatedBalance = balance.subtract(amount);
+
+			if (updatedBalance.compareTo(minAmount) < 0)
+				throw new InsufficientFundsException("");
+
 			try {
 				Class.forName("com.mysql.cj.jdbc.Driver");
 				Connection conn = DriverManager.getConnection(
 					"jdbc:mysql://localhost:3306/ATM?user=root&password=root"
 				);
 				Statement stmt = conn.createStatement();
+				stmt.execute("update accountInfo set balance = " + updatedBalance + "where userID = " + userID);
 			} catch (Exception e) {
 				System.out.println(e);
 			}
 			
-			return amount;
+			return updatedBalance.setScale(2, RoundingMode.HALF_EVEN);
 		}
 		
-		private BigDecimal deposit(BigDecimal amount) {
+		private BigDecimal deposit(Object userID, BigDecimal balance, BigDecimal amount) {
+			BigDecimal updatedBalance = balance.add(amount);
 			try {
 				Class.forName("com.mysql.cj.jdbc.Driver");
 				Connection conn = DriverManager.getConnection(
 					"jdbc:mysql://localhost:3306/ATM?user=root&password=root"
 				);
 				Statement stmt = conn.createStatement();
+				stmt.execute("update accountInfo set balance = " + updatedBalance + "where userID = " + userID);
 			} catch (Exception e) {
 				System.out.println(e);
 			}
-
-			return amount;
+			
+			return updatedBalance.setScale(2, RoundingMode.HALF_EVEN);
 		}
 }
