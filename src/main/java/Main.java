@@ -16,6 +16,12 @@ class InsufficientFundsException extends Exception {
     }
 }
 
+class DecimalPlaceException extends Exception {
+    DecimalPlaceException(String message) {
+        super(message);
+    }
+}
+
 @WebServlet("/Main")
 public class Main extends HttpServlet {
 	static final long serialVersionUID = 1L;
@@ -29,49 +35,93 @@ public class Main extends HttpServlet {
 		seedData();
 	}
 
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 		throws ServletException, IOException {
-			response.setContentType("text/html");
-			String paramVal = "";
-			String errMsg = "";
-			String withdrawEnabled = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
-			String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\">";
-			String depositEnabled = "<input type=\"radio\" name=\"rd\" value=\"deposit\" checked=\"checked\">";
-			String depositRd = "<input type=\"radio\" name=\"rd\" value=\"deposit\">";
-			BigDecimal amount = new BigDecimal("0.00");
-			BigDecimal balance = new BigDecimal((String) balanceStr);
+			if (request.getParameter("login") != null) {
+				response.setContentType("text/html");
+				response.setHeader("WWW-Authenticate", "BASICATM realm=\"atm\"");
+				userID = request.getParameter("userID");
+				String pin = request.getParameter("pin");
+				String errMsg = "Your authentication has failed, please try again";
+				String succMsg = "Your authentication is successful";
+				String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
+				String depositRd = "<input type=\"radio\" name=\"rd\" value=\"deposit\">";
 
-			String transaction = request.getParameter("rd");
-			
-			if (transaction.equals("withdraw")) {
-				withdrawRd = withdrawEnabled;
-				paramVal = request.getParameter("withdraw");
 				try {
-					amount = new BigDecimal(paramVal);
+					Class.forName("com.mysql.cj.jdbc.Driver");
+					Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost:3306/ATM?user=root&password=root"
+					);
+					Statement stmt = conn.createStatement();
+					ResultSet accountInfo = null; 
+					if (!userID.isEmpty() && userID.matches("[0-9]+"))
+						accountInfo = stmt.executeQuery("Select * from accountInfo where userID = " + userID);
+					else
+						response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
+
+					if (accountInfo.next() == false)
+						response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
+					else
+						if (!accountInfo.getString(3).equals(pin)) {
+							response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
+						} else {
+							name = accountInfo.getString(2); 
+							balanceStr = accountInfo.getString(4); 
+						}
 				} catch (Exception e) {
-					errMsg = "Please enter a monetary value greater than 0";
+					System.out.println(e);
 				}
-				if (amount.compareTo(minAmount) <= 0) {
-					errMsg = "Please enter a monetary value greater than 0";
-				} else {
+				
+				String msg = "<h3 class=\"succ-msg\">" + succMsg + "</h3>";
+				display(response, msg, withdrawRd, depositRd);
+			} else if (request.getParameter("withdraw-deposit") != null) {
+				response.setContentType("text/html");
+				String paramVal = "";
+				String errMsg = "";
+				String withdrawEnabled = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
+				String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\">";
+				String depositEnabled = "<input type=\"radio\" name=\"rd\" value=\"deposit\" checked=\"checked\">";
+				String depositRd = "<input type=\"radio\" name=\"rd\" value=\"deposit\">";
+				BigDecimal amount = new BigDecimal("0.00");
+				BigDecimal balance = new BigDecimal((String) balanceStr);
+
+				String transaction = request.getParameter("rd");
+				
+				if (transaction.equals("withdraw")) {
+					withdrawRd = withdrawEnabled;
+					paramVal = request.getParameter("withdraw");
 					try {
-						withdraw(balance, amount);
-					} catch (InsufficientFundsException e) {
-						errMsg = "There is insufficient funds, please try a smaller amount";
+						amount = new BigDecimal(paramVal);
+					} catch (Exception e) {
+						errMsg = "Please enter a monetary value greater than 0";
 					}
-				}
-			} else {
-				paramVal = request.getParameter("deposit");
-				depositRd = depositEnabled;
-				try {
-					amount = new BigDecimal(paramVal);
-				} catch (Exception e) {
-					errMsg = "Please enter a monetary value";
-				}
-				if (amount.compareTo(minAmount) <= 0) {
-					errMsg = "Please enter a monetary value greater than 0";
+					if (amount.compareTo(minAmount) <= 0) {
+						errMsg = "Please enter a monetary value greater than 0";
+					} else {
+						try {
+							withdraw(balance, amount);
+						} catch (InsufficientFundsException e) {
+							errMsg = e.getMessage();
+						} catch (DecimalPlaceException e) {
+							errMsg = e.getMessage();
+						}
+					}
 				} else {
-					deposit(balance, amount);
+					paramVal = request.getParameter("deposit");
+					depositRd = depositEnabled;
+					try {
+						amount = new BigDecimal(paramVal);
+					} catch (Exception e) {
+						errMsg = "Please enter a monetary value";
+					}
+					if (amount.compareTo(minAmount) <= 0) {
+						errMsg = "Please enter a monetary value greater than 0";
+					} else {
+						try {
+							deposit(balance, amount);
+						} catch (DecimalPlaceException e) {
+							errMsg = e.getMessage();
+						}
 				}
 			}
 
@@ -79,46 +129,8 @@ public class Main extends HttpServlet {
 				? "<h3> Your account balance is $" + balanceStr + "</h3>"
 				: "<h3 class=\"err-msg\">" + errMsg + "</h3>";
 			display(response, msg, withdrawRd, depositRd);
-	}
 
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-		throws ServletException, IOException {
-			response.setContentType("text/html");
-			response.setHeader("WWW-Authenticate", "BASICATM realm=\"atm\"");
-			userID = request.getParameter("userID");
-			String pin = request.getParameter("pin");
-			String errMsg = "Your authentication has failed, please try again";
-			String succMsg = "Your authentication is successful";
-			String withdrawRd = "<input type=\"radio\" name=\"rd\" value=\"withdraw\" checked=\"checked\">";
-			String depositRd = "<input type=\"radio\" name=\"rd\" value=\"deposit\">";
-
-			try {
-				Class.forName("com.mysql.cj.jdbc.Driver");
-				Connection conn = DriverManager.getConnection(
-					"jdbc:mysql://localhost:3306/ATM?user=root&password=root"
-				);
-				Statement stmt = conn.createStatement();
-				ResultSet accountInfo = null; 
-				if (!userID.isEmpty() && userID.matches("[0-9]+"))
-					accountInfo = stmt.executeQuery("Select * from accountInfo where userID = " + userID);
-				else
-					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
-
-				if (accountInfo.next() == false)
-					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
-				else
-					if (!accountInfo.getString(3).equals(pin)) {
-					  response.sendError(HttpServletResponse.SC_UNAUTHORIZED, errMsg);
-					} else {
-						name = accountInfo.getString(2); 
-						balanceStr = accountInfo.getString(4); 
-					}
-			} catch (Exception e) {
-				System.out.println(e);
 			}
-			
-			String msg = "<h3 class=\"succ-msg\">" + succMsg + "</h3>";
-			display(response, msg, withdrawRd, depositRd);
 	} 
 
 	private void display(HttpServletResponse response, String msg, String withdrawRd, String depositRd)
@@ -143,7 +155,6 @@ public class Main extends HttpServlet {
 			out.println("<head>");
 
 			out.println("<body>");
-
 			out.println("<div class=\"header\">");
 			out.println("<h1>Hello " + name + "!</h1>");
 			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Client.jsp\" method=\"POST\">");
@@ -152,13 +163,13 @@ public class Main extends HttpServlet {
 			out.println("</div>");
 			out.println(msg);
 			out.println("<div id=\"form\">");
-			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"GET\">");
+			out.println("<form action=\"http://localhost:8080/cs602-atm-0.0.1/Main\" method=\"POST\">");
 			out.println("<div id=\"fields\">");
 			out.println(withdrawRd);
 			out.println("Withdraw: <input type=\"text\" name=\"withdraw\"><br>");
 			out.println(depositRd);
 			out.println("Deposit: <input type=\"text\" name=\"deposit\"><br>");
-			out.println("<button class=\"submit-btn\" type=\"submit\">Submit</button>");
+			out.println("<button class=\"submit-btn\" type=\"submit\" name=\"withdraw-deposit\">Submit</button>");
 			out.println("</div>");
 			out.println("</form>");
 			out.println("</div>");
@@ -188,12 +199,20 @@ public class Main extends HttpServlet {
 		}
 	}
 
-	private void withdraw(BigDecimal balance, BigDecimal amount) throws InsufficientFundsException {
+	private void withdraw(BigDecimal balance, BigDecimal amount) throws InsufficientFundsException, DecimalPlaceException {
+		int decimalIndex = amount.toString().indexOf("."); 
+		int decimalPlaces = decimalIndex == -1
+			? 0
+			: amount.toString().length() - decimalIndex - 1;
+
+		if (decimalPlaces > 2) {
+			throw new DecimalPlaceException("Please enter amount rounded to the nearest hundredth");
+		}
 		amount = amount.setScale(2, RoundingMode.FLOOR);
 		BigDecimal updatedBalance = balance.subtract(amount);
 
 		if (updatedBalance.compareTo(minAmount) < 0)
-			throw new InsufficientFundsException("");
+			throw new InsufficientFundsException("There is insufficient funds, please try a smaller amount");
 
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
@@ -209,7 +228,15 @@ public class Main extends HttpServlet {
 		balanceStr = updatedBalance.toString();
 	}
 	
-	private void deposit(BigDecimal balance, BigDecimal amount) {
+	private void deposit(BigDecimal balance, BigDecimal amount) throws DecimalPlaceException {
+		int decimalIndex = amount.toString().indexOf("."); 
+		int decimalPlaces = decimalIndex == -1
+			? 0
+			: amount.toString().length() - decimalIndex - 1;
+
+		if (decimalPlaces > 2) {
+			throw new DecimalPlaceException("Please enter amount rounded to the nearest hundredth");
+		}
 		amount = amount.setScale(2, RoundingMode.FLOOR);
 		BigDecimal updatedBalance = balance.add(amount);
 

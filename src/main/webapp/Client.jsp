@@ -57,7 +57,7 @@
 			out.println("<div id=\"fields\">");
 			out.println("<span>User ID:</span> <input type=\"text\" name=\"userID\"><br>");
 			out.println("<span>Pin:</span> <input type=\"text\" name=\"pin\"><br>");
-			out.println("<button class=\"submit-btn\" type=\"submit\">Submit</button>");
+			out.println("<button class=\"submit-btn\" type=\"submit\" name=\"login\">Submit</button>");
 			out.println("</div>");
 			out.println("</form>");
 			out.println("</div>");
